@@ -266,7 +266,7 @@ class Painter:
                 f = font(56, 'Bold'); txt = plain(s2['text']); tw = min(760, d.textlength(txt, font=f) + 80)
                 bub = Image.new('RGBA', (int(tw) + 20, 170), (0, 0, 0, 0)); bd = ImageDraw.Draw(bub)
                 bd.rounded_rectangle([10, 10, tw + 10, 160], 50, fill=(WHITE if l2 else BLUE) + (255,))
-                draw_rich(bub, s2['text'], (tw + 20) / 2, 85, 56, base=INK if l2 else WHITE, b=BLUE if l2 else (190, 215, 255), r=RED, weight='Bold', maxw=tw - 60)
+                draw_rich(bub, s2['text'], (tw + 20) / 2, 85, 56, base=INK if l2 else WHITE, b=BLUE if l2 else (255, 214, 64), r=RED, weight='Bold', maxw=tw - 60)
                 bub = bub.resize((max(1, int(bub.size[0] * sa)), max(1, int(bub.size[1] * sa))), Image.LANCZOS)
                 av = (90 if l2 else W - 90); ay = y0 + k * 260 + 80
                 d.ellipse([av - 55, ay - 55, av + 55, ay + 55], fill=RED if l2 else (255, 196, 64))
