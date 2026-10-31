@@ -2,6 +2,8 @@
 
 Usage:
   python3 tfw_reel.py reel.json OUT_DIR --tts TTS_DIR --logo logo.png [--stills 0.5 3 8]
+With "voice": "none" (the owner's choice for now) no voice is made: scenes last as long as their text takes to read,
+the music is louder, "say" is ignored and --tts is not needed.
 TTS_DIR holds kokoro-v1.0.int8.onnx and voices-v1.0.bin
 (github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/<name>); pip install kokoro-onnx soundfile scipy.
 Needs ffmpeg and the Poppins font (~/.fonts). Output: OUT_DIR/<asset_name>.mp4 and <asset_name>_cover.jpg.
@@ -92,6 +94,7 @@ def parts(sc):
     return [(s, sc.get('lang', 'en'))] if s else []
 
 def make_voice(spec, tts_dir, work):
+    if spec.get('voice') == 'none': return [[] for _ in spec['scenes']]
     from kokoro_onnx import Kokoro
     k = Kokoro(str(Path(tts_dir) / 'kokoro-v1.0.int8.onnx'), str(Path(tts_dir) / 'voices-v1.0.bin'))
     en_voice = spec.get('voice', 'af_heart'); out = []
@@ -118,6 +121,10 @@ def plan(spec, voice):
             for w, k in zip(ws, wt):
                 dd = (d - 0.12) * k / sum(wt); words.append((len(scenes), w, s0, s0 + dd)); s0 += dd
             v += d + 0.1
+        if not clips:  # no voice: give the viewer time to read the on-screen text
+            n = len(plain(sc.get('text', '')).split()) + len((sc.get('sub') or '').split()) + len((sc.get('label') or '').split())
+            v = st + {'hook': 1.0, 'cta': 1.6, 'wrong': 1.5, 'right': 1.4}.get(sc['type'], 0.9) + 0.3 * n
+            if sc['type'] == 'tip': v += 0.4 * len(plain(sc.get('text', ''))) / 30
         hold = {'cta': 1.4, 'right': 0.6, 'wrong': 0.45, 'hook': 0.15}.get(sc['type'], pace)
         end = max(v - 0.1 + hold, st + {'hook': 1.2}.get(sc['type'], 1.0))
         scenes.append({**sc, 'start': 0.0 if not scenes else st, 'end': end}); t = end
@@ -176,7 +183,7 @@ def soundtrack(spec, scenes, vo, total, path):
     for st, a in vo:
         add(voice, st, hp(a, 80)); act[int((st - 0.1) * SR):int((st + len(a) / SR + 0.1) * SR)] = 1
     k = int(0.2 * SR); act = np.convolve(act, np.ones(k) / k, 'same')
-    mix = music * 0.28 * (1 - 0.5 * act) + sfx + voice
+    mix = music * (0.28 if vo else 0.6) * (1 - 0.5 * act) + sfx + voice
     f = int(0.8 * SR); mix[-f:] *= np.linspace(1, 0, f)
     sf.write(path, np.stack([mix, mix], 1) / (np.abs(mix).max() + 1e-9) * 0.95, SR)
 
@@ -295,7 +302,7 @@ class Painter:
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('spec'); ap.add_argument('out')
-    ap.add_argument('--tts', required=True); ap.add_argument('--logo', default='logo.png'); ap.add_argument('--maple', default=None)
+    ap.add_argument('--tts', default='tts'); ap.add_argument('--logo', default='logo.png'); ap.add_argument('--maple', default=None)
     ap.add_argument('--stills', nargs='*', type=float)
     a = ap.parse_args(); spec = json.loads(Path(a.spec).read_text(encoding='utf-8'))
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True); name = spec['asset_name']
